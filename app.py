@@ -24,10 +24,10 @@ CORS(app)
 
 app.secret_key = 'shapeit'
 # Configure the session to use server-side storage
-app.config["SESSION_TYPE"] = "redis"  # Example: using Redis
-app.config["SESSION_PERMANENT"] = False
-app.config["SESSION_USE_SIGNER"] = True
-app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL"))  # Environment variable for Redis URL
+# app.config["SESSION_TYPE"] = "redis"  # Example: using Redis
+# app.config["SESSION_PERMANENT"] = False
+# app.config["SESSION_USE_SIGNER"] = True
+# app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL"))  # Environment variable for Redis URL
 
 
 # Initialize Session
@@ -855,6 +855,7 @@ def parse_JSON(jsonString):
 
 # Run the Flask application
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    port = int(os.environ.get('PORT', 5001))  # Default to 5001 if PORT not set
+    app.run(debug=False, host='0.0.0.0', port=port)
 
 
