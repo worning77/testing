@@ -756,7 +756,7 @@ chain_noRAG = {
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/test', methods=['POST'])
+@app.route('/API-key', methods=['POST'])
 def test():
     return "ho"
 
