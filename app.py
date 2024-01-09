@@ -1,86 +1,38 @@
+import openai
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.prompts import SemanticSimilarityExampleSelector
 from langchain.vectorstores import Chroma
 from langchain.output_parsers import StructuredOutputParser, ResponseSchema
 from langchain.prompts import PromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate
-from langchain.llms import OpenAI
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import (
     ChatPromptTemplate,
     FewShotChatMessagePromptTemplate,
 )
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session
+from flask_session import Session
 import json
 from flask_cors import CORS
+import os
 
-embeddings = None
 
+
+
+api_key = None
 # Initialize Flask
 app = Flask(__name__)
+# Secret key for sessions (use a strong, random value in production)
+app.config['SECRET_KEY'] = 'shape-abc'
+# Session configuration (you can also use server-side sessions)
+app.config['SESSION_TYPE'] = 'filesystem'
+
+
 CORS(app)
 
-is_api_key_activated = False
-openai_api_key = None
-embeddings = None
-chain = None
-chain_noRAG = None
+
+
 chat_history = []
-
-
-
-@app.route('/activate', methods=['POST'])
-def activate():
-    global is_api_key_activated, embeddings
-    data = request.json
-    api_key = data.get('apiKey')
-
-    if validate_api_key(api_key):
-        is_api_key_activated = True
-        embeddings = OpenAIEmbeddings(api_key)  # Initialize with the API key
-        return jsonify({'success': True, 'message': 'API key activated successfully'})
-    else:
-        return jsonify({'success': False, 'message': 'Invalid API key'}), 401
-
-
-
-
 follow_up_enabled = False
-
-def parse_JSON(jsonString):
-    res = {}
-
-    # Check for empty or None input
-    if not jsonString:
-        return res
-
-    # Remove '{' and '}'
-    cleaned_string = jsonString[jsonString.find("{")+1:jsonString.rfind("}")].strip()
-
-    # Extracting type
-    if '"type":' in cleaned_string:
-        start_type = cleaned_string.index('"type": ') + len('"type": ')
-        end_type = cleaned_string.index(',', start_type)
-        type_value = cleaned_string[start_type:end_type].strip('"').strip()
-        res['type'] = type_value
-
-
-    if '"message":' in cleaned_string:
-        start_type = cleaned_string.index('"message": ') + len('"message": ')
-        end_type = cleaned_string.index(',', start_type)
-        messagevalue = cleaned_string[start_type:end_type].strip('"').strip()
-        res['message'] = messagevalue
-
-
-    # Extracting content
-    if '"content":' in cleaned_string:
-        start_content = cleaned_string.index('"content":') + len('"content":')
-        content_value = cleaned_string[start_content:].strip().lstrip('"""').rstrip('"""')
-        content_value = content_value.replace("\\" , "")
-        res['content'] = content_value
-
-
-    return res
-
 
 examples = [
     #Generation of Static Shapes
@@ -717,7 +669,7 @@ examples = [
         """
     },
 ]
-#Defining output parser
+    #Defining output parser
 response_schemas = [
     ResponseSchema(name="type", description="type of output"),
     ResponseSchema(name="message", description="message to the system"),
@@ -729,57 +681,23 @@ format_instructions = output_parser.get_format_instructions()
 #store few shot examples
 to_vectorize = [" ".join(example.values()) for example in examples]
 
-vectorstore = Chroma.from_texts(to_vectorize, embeddings, metadatas=examples)
-
-example_selector = SemanticSimilarityExampleSelector(
-    vectorstore=vectorstore,
-    k=2,
-)
-
-# Define the few-shot prompt.
-example_prompt = FewShotChatMessagePromptTemplate(
-    # The input variables select the values to pass to the example_selector
-    input_variables=["input"],
-    example_selector=example_selector,
-    # Define how each example will be formatted.
-    # In this case, each example will become 2 messages:
-    # 1 human, and 1 AI
-    example_prompt=ChatPromptTemplate.from_messages(
-        [("human", "{input}"), ("ai", "{output}")]
-    ),
-    partial_variables={"format_instructions": format_instructions},
-)
-
-
-final_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", "You are a AI software control system which highly skilled Javascript. Your primary responsibility is to generate script behaviors(including shape, motion and Interactions) on shape display hardwares used to controll individual pins."),
-        example_prompt,
-        ("human", "{input}"),
-    ]
-)
-
-final_prompt_noRAG = ChatPromptTemplate.from_messages(
-    [
-        ("system", "You are a AI software control system which highly skilled Javascript. Your primary responsibility is to generate script behaviors(including shape, motion and Interactions) on shape display hardwares used to controll individual pins."),
-        ("human", "{input}"),
-    ]
-)
 
 
 
-chain = {
-    "input": lambda x: x["input"],
-    "chat_history": lambda x: x["chat_history"],
-} | final_prompt | ChatOpenAI(temperature=0.0)
+@app.route('/activate', methods=['POST'])
+def activate():
+    global api_key
+    data = request.json
+    api_key = data.get('apiKey')
 
-chain_noRAG = {
-    "input": lambda x: x["input"],
-    "chat_history": lambda x: x["chat_history"],
-} | final_prompt_noRAG | ChatOpenAI(temperature=0.0)
-
-#OPERATION MODE
-
+    try:
+        init_agent()
+        print("API key activated successfully")
+        return jsonify({'success': True, 'message': 'API key activated successfully'})
+    except Exception as e:
+        # In case of an error, clear the API key from the session
+        #session.pop('openai_api_key', None)
+        return jsonify({'success': False, 'message': f'API key validation error: {e}'}), 401
 
 @app.route('/toggle_follow_up', methods=['POST'])
 def toggle_follow_up():
@@ -792,29 +710,144 @@ def toggle_follow_up():
 # Route to handle POST requests
 @app.route('/generate_script', methods=['POST'])
 def generate_script():
-    global follow_up_enabled
+    print(api_key)
+    if api_key is None:
+        return jsonify({"error": "API key not set in session"}), 401
+
     data = request.json
     user_input = data.get("input")
+
     print(user_input)
 
     if not user_input:
         return jsonify({"error": "No input provided"}), 400
 
-    # Invoke your existing logic
-    # Check if follow-ups are enabled
-    if follow_up_enabled:
-        # Logic for follow-up (bypass retrieval)
-        output = chain_noRAG.invoke({"input": user_input, "chat_history": chat_history})
-    else:
-        # Existing logic with retrieval
-        output = chain.invoke({"input": user_input, "chat_history": chat_history})
-    res = parse_JSON(output.content)
+    try:
+        global follow_up_enabled
+        # Add your logic here. Ensure output is not None
+        output = None
+        if follow_up_enabled:
+            # Assuming chain_noRAG.invoke returns a valid response or None
+            output = chain_noRAG.invoke({"input": user_input, "chat_history": chat_history})
+        else:
+            # Assuming chain.invoke returns a valid response or None
+            output = chain.invoke({"input": user_input, "chat_history": chat_history})
 
-    # Update chat history
-    chat_history.append({"input": user_input, "output": res})
-    print(res)
-    # Respond with the generated script
-    return jsonify(res)
+        if output is None:
+            return jsonify({"error": "No output from the model"}), 500
+
+        res = parse_JSON(output.content)
+        chat_history.append({"input": user_input, "output": res})
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+
+def init_agent():
+    global embeddings, chain, chain_noRAG, vectorstore, example_selector, example_prompt, final_prompt, final_prompt_noRAG
+
+    if api_key is not None:
+        #dotenv.load_dotenv()
+
+        print("pass")
+        openai_api_key = api_key
+        print(openai_api_key)
+
+        embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
+        vectorstore = Chroma.from_texts(to_vectorize, embeddings, metadatas=examples)
+
+        example_selector = SemanticSimilarityExampleSelector(
+            vectorstore=vectorstore,
+            k=2,
+        )
+
+        # Define the few-shot prompt.
+        example_prompt = FewShotChatMessagePromptTemplate(
+            # The input variables select the values to pass to the example_selector
+            input_variables=["input"],
+            example_selector=example_selector,
+            # Define how each example will be formatted.
+            # In this case, each example will become 2 messages:
+            # 1 human, and 1 AI
+            example_prompt=ChatPromptTemplate.from_messages(
+                [("human", "{input}"), ("ai", "{output}")]
+            ),
+            partial_variables={"format_instructions": format_instructions},
+        )
+
+
+        final_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", "You are a AI software control system which highly skilled Javascript. Your primary responsibility is to generate script behaviors(including shape, motion and Interactions) on shape display hardwares used to controll individual pins."),
+                example_prompt,
+                ("human", "{input}"),
+            ]
+        )
+
+        final_prompt_noRAG = ChatPromptTemplate.from_messages(
+            [
+                ("system", "You are a AI software control system which highly skilled Javascript. Your primary responsibility is to generate script behaviors(including shape, motion and Interactions) on shape display hardwares used to controll individual pins."),
+                ("human", "{input}"),
+            ]
+        )
+
+        chain = {
+            "input": lambda x: x["input"],
+            "chat_history": lambda x: x["chat_history"],
+        } | final_prompt | ChatOpenAI(openai_api_key=openai_api_key,temperature=0.0)
+
+        chain_noRAG = {
+            "input": lambda x: x["input"],
+            "chat_history": lambda x: x["chat_history"],
+        } | final_prompt_noRAG | ChatOpenAI(openai_api_key=openai_api_key,temperature=0.0)
+
+
+
+
+
+
+
+def parse_JSON(jsonString):
+    res = {}
+
+    # Check for empty or None input
+    if not jsonString:
+        return res
+
+    # Remove '{' and '}'
+    cleaned_string = jsonString[jsonString.find("{")+1:jsonString.rfind("}")].strip()
+
+    # Extracting type
+    if '"type":' in cleaned_string:
+        start_type = cleaned_string.index('"type": ') + len('"type": ')
+        end_type = cleaned_string.index(',', start_type)
+        type_value = cleaned_string[start_type:end_type].strip('"').strip()
+        res['type'] = type_value
+
+
+    if '"message":' in cleaned_string:
+        start_type = cleaned_string.index('"message": ') + len('"message": ')
+        end_type = cleaned_string.index(',', start_type)
+        messagevalue = cleaned_string[start_type:end_type].strip('"').strip()
+        res['message'] = messagevalue
+
+
+    # Extracting content
+    if '"content":' in cleaned_string:
+        start_content = cleaned_string.index('"content":') + len('"content":')
+        content_value = cleaned_string[start_content:].strip().lstrip('"""').rstrip('"""')
+        content_value = content_value.replace("\\" , "")
+        res['content'] = content_value
+
+
+    return res
+
+
+#OPERATION MODE
+
+
 
 # Run the Flask application
 if __name__ == '__main__':
