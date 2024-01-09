@@ -24,10 +24,10 @@ CORS(app)
 
 app.secret_key = 'shapeit'
 # Configure the session to use server-side storage
-# app.config["SESSION_TYPE"] = "redis"  # Example: using Redis
-# app.config["SESSION_PERMANENT"] = False
-# app.config["SESSION_USE_SIGNER"] = True
-# app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL"))  # Environment variable for Redis URL
+app.config["SESSION_TYPE"] = "redis"  # Example: using Redis
+app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_USE_SIGNER"] = True
+app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL"))  # Environment variable for Redis URL
 
 
 # Initialize Session
@@ -687,6 +687,9 @@ format_instructions = output_parser.get_format_instructions()
 to_vectorize = [" ".join(example.values()) for example in examples]
 
 
+@app.route('/')
+def index():
+    return "Hello, world!"
 
 
 @app.route('/activate', methods=['POST'])
