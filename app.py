@@ -12,8 +12,8 @@ from flask import Flask, request, jsonify, session
 from flask_session import Session
 import json
 from flask_cors import CORS
+import redis
 import os
-
 
 
 
@@ -22,12 +22,13 @@ api_key = None
 app = Flask(__name__)
 CORS(app)
 
+app.secret_key = 'shapeit'
 # Configure the session to use server-side storage
 app.config["SESSION_TYPE"] = "redis"  # Example: using Redis
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_USE_SIGNER"] = True
-app.config["SESSION_REDIS"] = os.environ.get('REDIS_URL')  # Environment variable for Redis URL
-app.secret_key = 'shapeit'
+app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL"))  # Environment variable for Redis URL
+
 
 # Initialize Session
 Session(app)
