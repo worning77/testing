@@ -11,10 +11,9 @@ from langchain.prompts import (
 )
 from flask import Flask, request, jsonify
 import json
-import dotenv
 from flask_cors import CORS
 
-dotenv.load_dotenv()
+
 
 follow_up_enabled = False
 
@@ -756,9 +755,19 @@ chain_noRAG = {
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/API-key', methods=['POST'])
-def test():
-    return "ho"
+OPENAI_API_KEY= None
+
+@app.route('/activate', methods=['POST'])
+def activate():
+    global OPENAI_API_KEY
+    data = request.json
+    OPENAI_API_KEY = data.get('apiKey')
+
+    if OPENAI_API_KEY:  # You might want to add additional validation for the API key
+        return jsonify({'success': True, 'message': 'API key activated successfully'})
+    else:
+        return jsonify({'success': False, 'message': 'Invalid API key'}), 400
+
 
 
 @app.route('/toggle_follow_up', methods=['POST'])
@@ -801,17 +810,3 @@ if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
 
 
-
-# TESTING MODE:
-
-# while True:
-#     user_input = input("Enter your command (or 'exit' to end): ")
-#     if user_input.lower() == 'exit':
-#         break
-
-#     output = chain.invoke({"input": user_input, "chat_history": chat_history})
-
-#     res = parse_JSON(output.content)
-#     print(res)
-
-#     chat_history.append({"input": user_input, "output": res})
