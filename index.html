@@ -62,36 +62,30 @@
     document.getElementById('start-button').addEventListener('click', function() {
         const apiKey = document.getElementById('api-key-input').value;
 
-        // Send the API key to the Flask backend
-        fetch('https://shapeitweb-f8723f3919e2.herokuapp.com//activate', {
+        fetch('http://localhost:5001/activate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ apiKey: apiKey })
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Activation failed');
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             if (data.success) {
                 // Store the API key in localStorage and redirect
                 localStorage.setItem('GPT_API_KEY', apiKey);
                 window.location.href = 'main.html';
             } else {
-                // Handle the error (e.g., display a message to the user)
-                alert(data.message || 'Invalid API key');
+                // Display an error message
+                alert('Invalid API key. Please try again.');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            // Optionally, display an error message to the user
-            alert('An error occurred while activating.');
+            alert('An error occurred. Please try again.');
         });
     });
-</script>
+   </script>
+
 </body>
 </html>

@@ -215,7 +215,7 @@ class App {
     const originalColor = submitButton.style.backgroundColor;
     submitButton.innerHTML = '<i class="fas fa-spinner loading-icon"></i>';
     submitButton.style.backgroundColor = 'red';
-
+    //http://localhost:5001/activate'
     fetch('http://localhost:5001/generate_script', {
       method: 'POST',
       headers: {
@@ -228,6 +228,7 @@ class App {
         console.log('Success:', data);
         // Process the data received from the server
         let scriptContent = data.content;
+        console.log(scriptContent);
 
         if (scriptContent != '') {
           if (scriptContent.startsWith('`') && scriptContent.endsWith('`')) {
@@ -252,7 +253,7 @@ class App {
 
   //* To Python tune GPT part
   sendToggleStatusToBackend(isEnabled) {
-    fetch('http://localhost:5001/toggle_follow_up', {
+    fetch('http://localhost/main:5001/toggle_follow_up', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
