@@ -697,7 +697,8 @@ def activate():
     #global api_key
     data = request.json
     #api_key = data.get('apiKey')
-    session['api_key'] = data.get('apiKey')
+    session['api_key'] = str(data.get('apiKey'))
+    print(type(session['api_key']))
 
     try:
         init_agent(session['api_key'])
@@ -705,7 +706,7 @@ def activate():
         return jsonify({'success': True, 'message': 'API key activated successfully'})
     except Exception as e:
         # In case of an error, clear the API key from the session
-        print(e)
+        print("Bad key")
         return jsonify({'success': False, 'message': f'API key validation error: {e}'}), 401
 
 @app.route('/toggle_follow_up', methods=['POST'])
