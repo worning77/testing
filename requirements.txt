@@ -1,5 +1,7 @@
+python-3.9
 flask
 flask-cors
 langchain
 openai
 chromadb
+flask_session

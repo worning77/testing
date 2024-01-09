@@ -1,4 +1,3 @@
-import openai
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.prompts import SemanticSimilarityExampleSelector
 from langchain.vectorstores import Chroma
@@ -21,13 +20,18 @@ import os
 api_key = None
 # Initialize Flask
 app = Flask(__name__)
-# Secret key for sessions (use a strong, random value in production)
-app.config['SECRET_KEY'] = 'shape-abc'
-# Session configuration (you can also use server-side sessions)
-app.config['SESSION_TYPE'] = 'filesystem'
-
-
 CORS(app)
+
+# Configure the session to use server-side storage
+app.config["SESSION_TYPE"] = "redis"  # Example: using Redis
+app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_USE_SIGNER"] = True
+app.config["SESSION_REDIS"] = os.environ.get('REDIS_URL')  # Environment variable for Redis URL
+app.secret_key = 'shapeit'
+
+# Initialize Session
+Session(app)
+
 
 
 
@@ -686,12 +690,13 @@ to_vectorize = [" ".join(example.values()) for example in examples]
 
 @app.route('/activate', methods=['POST'])
 def activate():
-    global api_key
+    #global api_key
     data = request.json
-    api_key = data.get('apiKey')
+    #api_key = data.get('apiKey')
+    session['api_key'] = data.get('apiKey')
 
     try:
-        init_agent()
+        init_agent( session['api_key'])
         print("API key activated successfully")
         return jsonify({'success': True, 'message': 'API key activated successfully'})
     except Exception as e:
@@ -710,8 +715,8 @@ def toggle_follow_up():
 # Route to handle POST requests
 @app.route('/generate_script', methods=['POST'])
 def generate_script():
-    print(api_key)
-    if api_key is None:
+    #print(api_key)
+    if  session['api_key'] is None:
         return jsonify({"error": "API key not set in session"}), 401
 
     data = request.json
@@ -743,9 +748,7 @@ def generate_script():
         return jsonify({"error": str(e)}), 500
 
 
-
-
-def init_agent():
+def init_agent(api_key):
     global embeddings, chain, chain_noRAG, vectorstore, example_selector, example_prompt, final_prompt, final_prompt_noRAG
 
     if api_key is not None:
@@ -753,7 +756,7 @@ def init_agent():
 
         print("pass")
         openai_api_key = api_key
-        print(openai_api_key)
+       # print(openai_api_key)
 
         embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
         vectorstore = Chroma.from_texts(to_vectorize, embeddings, metadatas=examples)
