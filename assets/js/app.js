@@ -216,7 +216,7 @@ class App {
     submitButton.innerHTML = '<i class="fas fa-spinner loading-icon"></i>';
     submitButton.style.backgroundColor = 'red';
     //http://localhost:5001/activate'
-    fetch('http://localhost:5001/generate_script', {
+    fetch('https://shapeitweb-f8723f3919e2.herokuapp.com/generate_script', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -253,7 +253,7 @@ class App {
 
   //* To Python tune GPT part
   sendToggleStatusToBackend(isEnabled) {
-    fetch('http://localhost/main:5001/toggle_follow_up', {
+    fetch('https://shapeitweb-f8723f3919e2.herokuapp.com/toggle_follow_up', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
