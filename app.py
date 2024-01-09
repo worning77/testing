@@ -13,6 +13,35 @@ from flask import Flask, request, jsonify
 import json
 from flask_cors import CORS
 
+embeddings = None
+
+# Initialize Flask
+app = Flask(__name__)
+CORS(app)
+
+is_api_key_activated = False
+openai_api_key = None
+embeddings = None
+chain = None
+chain_noRAG = None
+chat_history = []
+
+
+
+@app.route('/activate', methods=['POST'])
+def activate():
+    global is_api_key_activated, embeddings
+    data = request.json
+    api_key = data.get('apiKey')
+
+    if validate_api_key(api_key):
+        is_api_key_activated = True
+        embeddings = OpenAIEmbeddings(api_key)  # Initialize with the API key
+        return jsonify({'success': True, 'message': 'API key activated successfully'})
+    else:
+        return jsonify({'success': False, 'message': 'Invalid API key'}), 401
+
+
 
 
 follow_up_enabled = False
@@ -699,7 +728,7 @@ format_instructions = output_parser.get_format_instructions()
 
 #store few shot examples
 to_vectorize = [" ".join(example.values()) for example in examples]
-embeddings = OpenAIEmbeddings()
+
 vectorstore = Chroma.from_texts(to_vectorize, embeddings, metadatas=examples)
 
 example_selector = SemanticSimilarityExampleSelector(
@@ -737,7 +766,7 @@ final_prompt_noRAG = ChatPromptTemplate.from_messages(
     ]
 )
 
-chat_history = []
+
 
 chain = {
     "input": lambda x: x["input"],
@@ -750,24 +779,6 @@ chain_noRAG = {
 } | final_prompt_noRAG | ChatOpenAI(temperature=0.0)
 
 #OPERATION MODE
-
-# Initialize Flask
-app = Flask(__name__)
-CORS(app)
-
-OPENAI_API_KEY= None
-
-@app.route('/activate', methods=['POST'])
-def activate():
-    global OPENAI_API_KEY
-    data = request.json
-    OPENAI_API_KEY = data.get('apiKey')
-
-    if OPENAI_API_KEY:  # You might want to add additional validation for the API key
-        return jsonify({'success': True, 'message': 'API key activated successfully'})
-    else:
-        return jsonify({'success': False, 'message': 'Invalid API key'}), 400
-
 
 
 @app.route('/toggle_follow_up', methods=['POST'])
