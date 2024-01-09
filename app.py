@@ -700,12 +700,12 @@ def activate():
     session['api_key'] = data.get('apiKey')
 
     try:
-        init_agent( session['api_key'])
+        init_agent(session['api_key'])
         print("API key activated successfully")
         return jsonify({'success': True, 'message': 'API key activated successfully'})
     except Exception as e:
         # In case of an error, clear the API key from the session
-        #session.pop('openai_api_key', None)
+        print(e)
         return jsonify({'success': False, 'message': f'API key validation error: {e}'}), 401
 
 @app.route('/toggle_follow_up', methods=['POST'])
@@ -758,9 +758,9 @@ def init_agent(api_key):
     if api_key is not None:
         #dotenv.load_dotenv()
 
-        print("pass")
+
         openai_api_key = api_key
-       # print(openai_api_key)
+        print(openai_api_key)
 
         embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
         vectorstore = Chroma.from_texts(to_vectorize, embeddings, metadatas=examples)
@@ -809,6 +809,8 @@ def init_agent(api_key):
             "input": lambda x: x["input"],
             "chat_history": lambda x: x["chat_history"],
         } | final_prompt_noRAG | ChatOpenAI(openai_api_key=openai_api_key,temperature=0.0)
+
+        print("done AI preparation")
 
 
 
