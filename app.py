@@ -691,23 +691,28 @@ to_vectorize = [" ".join(example.values()) for example in examples]
 def index():
     return "Hello, world!"
 
-
 @app.route('/activate', methods=['POST'])
 def activate():
-    #global api_key
-    data = request.json
-    #api_key = data.get('apiKey')
-    session['api_key'] = str(data.get('apiKey'))
-    print(type(session['api_key']))
+    session['test_key'] = 'test_value'  # Store a simple test string
+    return jsonify({'success': True, 'message': 'Session test'})
 
-    try:
-        init_agent(session['api_key'])
-        print("API key activated successfully")
-        return jsonify({'success': True, 'message': 'API key activated successfully'})
-    except Exception as e:
-        # In case of an error, clear the API key from the session
-        print("Bad key")
-        return jsonify({'success': False, 'message': f'API key validation error: {e}'}), 401
+
+# @app.route('/activate', methods=['POST'])
+# def activate():
+#     #global api_key
+#     data = request.json
+#     #api_key = data.get('apiKey')
+#     session['api_key'] = str(data.get('apiKey'))
+#     print(type(session['api_key']))
+
+#     try:
+#         init_agent(session['api_key'])
+#         print("API key activated successfully")
+#         return jsonify({'success': True, 'message': 'API key activated successfully'})
+#     except Exception as e:
+#         # In case of an error, clear the API key from the session
+#         print("Bad key")
+#         return jsonify({'success': False, 'message': f'API key validation error: {e}'}), 401
 
 @app.route('/toggle_follow_up', methods=['POST'])
 def toggle_follow_up():
