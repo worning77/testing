@@ -703,7 +703,6 @@ def activate():
     data = request.json
     #api_key = data.get('apiKey')
     session['api_key'] = str(data.get('apiKey'))
-    print(type(session['api_key']))
 
     try:
         init_agent(session['api_key'])
@@ -726,8 +725,8 @@ def toggle_follow_up():
 @app.route('/generate_script', methods=['POST'])
 def generate_script():
     #print(api_key)
-    if  session['api_key'] is None:
-        return jsonify({"error": "API key not set in session"}), 401
+    # if not  session['api_key'] is None:
+    #     return jsonify({"error": "API key not set in session"}), 401
 
     data = request.json
     user_input = data.get("input")
@@ -763,8 +762,6 @@ def init_agent(api_key):
 
     if api_key is not None:
         #dotenv.load_dotenv()
-
-
         openai_api_key = api_key
         print(openai_api_key)
 
